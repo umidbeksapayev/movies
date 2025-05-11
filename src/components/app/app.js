@@ -4,46 +4,33 @@ import { AppInfo } from "../app-info/app-info";
 import  SearchPanel  from "../search-panel/search-panel";
 import MovieList from '../movie-list/movie-list';
 import MoviesAddForm from '../movies-add-form/movies-add-form';
-import { Component } from 'react';
+import { Component, useEffect, useState } from 'react';
 import React from 'react'
 import { v4 as uuidv4 } from 'uuid';
 
 
-class App extends Component{
-  constructor(props){
-    super(props)
-    this.state = {
-      data : [
-        {name: "Merlin", viewers:989, favourite:false, id:1, like:true},
-        {name: "Salom", viewers:555, favourite:true ,id:2},
-        {name: "Alik", viewers:989, favourite:false, id:3},
-      ],
-      term : '',
-      filter:'all'
-    }
+const App = () =>{
+  const[data, setData]= useState([])
+  const [ term, setTerm] = useState('')
+  const [filter, setfilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(false)
+
+  const onDelete = id =>{
+    const newArr = data.filter(c=> c.id !== id)
+    setData(newArr)
   }
-    onDelete = id=>{
-      this.setState(({data})=>({
-        data:data.filter(c=> c.id !== id),
-      }))
-    }
-    addForm = (e, item) =>{
-      const newItem = {...item, id:uuidv4()}
-      e.preventDefault()
-      this.setState(({data})=>({
-        data:[...data, newItem]
-      }))
-      
-    }
-    searchHandler = (arr, term)=>{
-      if (term.length === 0){
+  const addForm = item =>{
+    const newItem = {...item, id:uuidv4()}
+    const newArr = [...data, newItem]
+    setData(newArr)
+  }
+  const searchHandler = (arr,term)=>{
+    if (term.length === 0){
         return arr
       }
-
       return arr.filter(item => item.name.toLowerCase().indexOf(term)>-1)
-    }
-
-    filterHandler = (arr, filter)=>{
+  }
+  const filterHandler = (arr, filter)=>{
       switch(filter){
         case 'popular':
           return arr.filter(c=>c.like)
@@ -53,33 +40,43 @@ class App extends Component{
           return arr
       }
     }
+  const updateTermHandler = term => setTerm(term)
+  const updateFilterHandler = filter =>setfilter(filter)
 
-    updateTermHandler = (term) =>{
-      this.setState({term})
-    }
-
-
-    updateFilterHandler = filter =>this.setState({filter})
-  render(){
-    const {data, term, filter} = this.state
-    const allMoviesCount = data.length
-    const favouriteMoviesCount = data.filter(c=>c.favourite).length
-    const visibleData = this.filterHandler(this.searchHandler(data, term), filter ) 
-    return (
+  useEffect(()=>{
+     setIsLoading(true)
+    fetch("https://jsonplaceholder.typicode.com/todos?_start=0&_limit=5")
+    .then(response =>response.json())
+    .then(json=> {
+      const newArr = json.map(item=>({
+        name:item.title, 
+        id:item.id,
+        viewers:989, 
+        favourite:false, 
+        like:false
+      }));
+      
+      setData(newArr)
+    })
+    .catch(err => console.log(err))
+    .finally(()=>setIsLoading(false))
+  },[])
+   return (
       <div className="app">
           <div className="content">
-              <AppInfo allMoviesCount = {allMoviesCount} favouriteMoviesCount = {favouriteMoviesCount}/>
+              <AppInfo allMoviesCount = {data.length} favouriteMoviesCount = {data.filter(c=>c.favourite).length}/>
               <div className='search-panel'>
-                  <SearchPanel updateTermHandler = {this.updateTermHandler}/>
-                  <AppFilter filter = {filter} updateFilterHandler={this.updateFilterHandler}/>
+                  <SearchPanel updateTermHandler = {updateTermHandler}/>
+                  <AppFilter filter = {filter} updateFilterHandler={updateFilterHandler}/>
               </div>
-              <MovieList data = {visibleData} onDelete = {this.onDelete}/>
-              <MoviesAddForm addForm = {this.addForm}/>
+              {isLoading && 'Loading..'}
+              <MovieList data = {filterHandler(searchHandler(data,term), filter)} onDelete = {onDelete}/>
+              <MoviesAddForm addForm = {addForm}/>
           </div>
       </div>
     )
-  }
 }
+
 export default App
 
 
